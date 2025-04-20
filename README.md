@@ -1,5 +1,5 @@
 # GTVelo
-_RNA velocity inference based on graph transformer_
+**_RNA velocity inference based on graph transformer_**
 
 ## Installation
 The environment can be set up using either of the following methods:
