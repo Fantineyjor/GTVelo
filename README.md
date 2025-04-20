@@ -1,7 +1,5 @@
 # GTVelo
-RNA velocity inference based on graph transformer
-
-GTVelo extends [LatentVelo](https://github.com/Spencerfar/LatentVelo)  by introducing a Graph Transformer-based Neural ODE model. This novel approach incorporates multi-head attention mechanisms to overcome single initial state limitations, enabling dynamic learning of global cell-to-cell relationships. The model supports flexible modeling of multi-branch trajectories and integration of multi-omics data.
+_RNA velocity inference based on graph transformer_
 
 ## Installation
 The environment can be set up using either of the following methods:
