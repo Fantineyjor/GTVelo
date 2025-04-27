@@ -61,7 +61,6 @@ class VAE(nn.Module):
         self.velo_reg_weight = velo_reg_weight
         self.celltype_velo = celltype_velo
         self.annot = False
-        #批次ID输进去不用图卷积
         if not gcn:
             self.batch_correction = True
             batch_correction = True
@@ -77,24 +76,21 @@ class VAE(nn.Module):
             
         # decoder networks
         self.decoder_s, self.decoder_u = create_decoder(latent_dim, observed, decoder_hidden)
-        
-        # velocity field network；include_time是将时间包含在潜在动力学中
+
         self.velocity_field = VelocityFieldReg(self.latent, self.h_dim, self.zr_dim, include_time, linear_splicing = linear_splicing)
         
-        # learnable decoder variance,代表了观测数据的条件方差，即模型预测的重构数据（例如，基因表达水平）的条件方差；潜在表示的条件方差，即模型中潜在变量的条件方差
         self.theta = nn.Parameter(2/np.sqrt(self.observed) * th.rand(self.observed) - 1/np.sqrt(self.observed))
         self.theta_z = nn.Parameter(2/np.sqrt(self.latent) * th.rand(self.latent) - 1/np.sqrt(self.latent))
 
-        # regularize with linear splicing dynamics
-        if self.velo_reg:#是否启用速度场正则化
-            if self.celltype_velo:#是否考虑细胞类型对速度场正则化的影响
+        if self.velo_reg:
+            if self.celltype_velo:
                 self.beta = nn.Parameter(2/np.sqrt(self.observed) * th.rand(self.celltypes, self.observed) - 1/np.sqrt(self.observed))
                 self.gamma = nn.Parameter(2/np.sqrt(self.observed) * th.rand(self.celltypes, self.observed) - 1/np.sqrt(self.observed))
             else:
                 self.beta = nn.Parameter(2/np.sqrt(self.observed) * th.rand(self.observed) - 1/np.sqrt(self.observed))
                 self.gamma = nn.Parameter(2/np.sqrt(self.observed) * th.rand(self.observed) - 1/np.sqrt(self.observed))
         device = th.device('cuda' if th.cuda.is_available() else 'cpu')
-        # initial state
+   
         self.initial = nn.Linear(1, 2*self.latent).to(device)
 
     def decoder_x(self, x):
@@ -327,96 +323,7 @@ class VAE(nn.Module):
             x0 = th.cat((self.decoder_batch(h0[:,:self.latent], batch_id), self.decoder_batch(h0[:,self.latent:2*self.latent], batch_id, 'u')), dim=-1)
             
         return th.cat((h0[:,None,:2*self.latent+self.zr_dim], z_traj), dim=1), times[None,:,None].repeat(z_traj.shape[0], 1, 1)
-
-    def gene_trajectories(self, normed_s, normed_u, adj, gene_names, adata, exp_time=None, batch_id=(None, None, None), mode='normal', time_steps=50):
  
-        batch_id, batch_onehot, celltype_id = batch_id
-
-        gene_indices = [list(adata.var_names).index(gene) for gene in gene_names]
-
-        gene_specific_s = normed_s[:, gene_indices]
-        gene_specific_u = normed_u[:, gene_indices]
-
-        latent_state, latent_mean, latent_logvar, latent_time, time_mean, time_logvar = self.latent_embedding(
-            gene_specific_s, gene_specific_u, adj, batch_id)
-        
-        z = latent_state[:,:self.latent*2]
-        c = latent_state[:,self.latent*2:]
-
-        if exp_time is not None:
-            # Normalize experimental time to match latent time scale
-            exp_time_normalized = (exp_time - exp_time.min()) / (exp_time.max() - exp_time.min())
-            exp_time_normalized = exp_time_normalized * latent_time.max()
-            times = exp_time_normalized.cuda()
-        else:
-            # Use regular time steps
-            unique_times, inverse_indices = th.unique(latent_time, return_inverse=True, sorted=True)
-            times = th.linspace(0, unique_times.max(), time_steps).cuda()
-        
-        # Run dynamics for each gene
-        gene_trajectories = []
-        for gene_idx in range(len(gene_indices)):
-            # Extract gene-specific components
-            c_gene = c[gene_idx:gene_idx+1].repeat(time_steps-1, 1)
-            
-            # Run dynamics
-            ht, h0 = self._run_dynamics(c_gene, times[1:], test=False)
-            
-            # Split into components
-            zs, zu, zt = (ht[...,:self.latent], 
-                        ht[...,self.latent:2*self.latent], 
-                        ht[...,2*self.latent:2*self.latent+self.zr_dim])
-            
-            # Combine trajectories
-            z_traj = th.cat((zs, zu, zt), dim=-1)
-            
-            # Add initial state
-            full_traj = th.cat((h0[:,None,:2*self.latent+self.zr_dim], z_traj), dim=1)
-            gene_trajectories.append(full_traj)
-        
-        # Stack all gene trajectories
-        z_trajectories = th.stack(gene_trajectories)
-        
-        # Prepare time points matrix
-        times_matrix = times[None,:,None].repeat(len(gene_indices), 1, 1)
-        
-        # Prepare additional gene-specific information
-        gene_specific_data = {
-            'gene_names': gene_names,
-            'gene_indices': gene_indices,
-            'latent_time': latent_time,
-            'latent_mean': latent_mean,
-            'latent_logvar': latent_logvar
-        }
-        
-        return z_trajectories, times_matrix
-
-    def gene_trajectories(self, normed_s, normed_u, adj, batch_id=(None, None, None), mode='normal', time_steps=50):
-        """
-        Internal method to compute gene trajectories
-        """
-        batch_id, batch_onehot, celltype_id = batch_id
-        
-        # Estimate latent state for genes
-        latent_state, latent_mean, latent_logvar, latent_time, time_mean, time_logvar = self.latent_embedding(
-            normed_s, normed_u, adj, batch_id)
-        
-        z = latent_state[:,:self.latent*2]
-        c = latent_state[:,self.latent*2:]
-        
-        # Choose times
-        unique_times, inverse_indices = th.unique(latent_time, return_inverse=True, sorted=True)
-        times = th.linspace(0, unique_times.max(), time_steps).cuda()
-        
-        # Run dynamics
-        ht, h0 = self._run_dynamics(c, times[1:], test=False)
-        zs, zu, zt = (ht[...,:self.latent], 
-                    ht[...,self.latent:2*self.latent], 
-                    ht[...,2*self.latent:2*self.latent+self.zr_dim])
-        z_traj = th.cat((zs, zu, zt), dim=-1)
-        
-        return th.cat((h0[:,None,:2*self.latent+self.zr_dim], z_traj), dim=1), times[None,:,None].repeat(z_traj.shape[0], 1, 1)
-     
 
     def corr_reg_func(self, normed_s, normed_u, shat, uhat, shat_data, uhat_data, mask_s, mask_u, zs, zu, zt, zs_data, zu_data, latent_time, batch_id, celltype_id, velo_genes_mask,adj):
 
