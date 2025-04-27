@@ -1,11 +1,5 @@
 import numpy as np
 
-"""
-Adapted from UniTVelo (Gao et al. 2022, bioRxiv)
-
-Selects a set of genes to regularize in gene-space
-"""
-
 def get_weight(x, y=None, perc=95):
     from scipy.sparse import issparse
 
