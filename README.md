@@ -24,13 +24,3 @@ notebook/
 ├── fig3/
 │   └── ...              # Similar structure for other figures
 ```
-# Acknowledgments
-Based on [LatentVelo](https://github.com/Spencerfar/LatentVelo) by Spencerfar.
-
-## License
-MIT License
-
-Copyright (c) 2022 Spencerfar
-Copyright (c) 2025 XJU
-
-Permission is hereby granted to use, copy, modify, and distribute this software under the MIT License conditions. Full license text: [MIT License](https://opensource.org/licenses/MIT)
