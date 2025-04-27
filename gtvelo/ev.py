@@ -16,8 +16,7 @@ def true_velocity_cosine(adata, layer=True, estimated_key = 'velocity', true_key
     """
     Cosine similarity for true velocity in synthetic datasets
     """ 
-    if layer:#是否从 adata.layers 中获取速度数据。如果设置为 False，则从 adata.obsm 中获取。
-#检查数据里面是否存在NaN,如果有，则只使用非NaN，用np.isnan来找NaN的位置，并用逻辑索引来排除这些值
+    if layer:
         if np.any(np.isnan(adata.layers[estimated_key])):
             cosine = paired_cosine_similarity(adata.layers[estimated_key][:,~np.isnan(adata.layers[estimated_key][0])], adata.layers[true_key][:,~np.isnan(adata.layers[estimated_key][0])])
         else:
@@ -73,8 +72,7 @@ def velocity_magnitude_correlation(adata, layer=True, estimated_key = 'velocity'
         true = np.sqrt(np.nansum(np.array(adata.obsm[true_key])**2, axis=-1))
     
     return spearmanr(estimated, true)[0]
-        
-#计算单细胞数据集中潜在时间（latent time）和伪时间（pseudotime）之间的相关性
+
 def pseudotime_correlation(adata, latent_time_key = 'latent_time', pseudotime_key = 'pseudotime', correlation = 'spearman', cell_label = None):
 
     if correlation == 'spearman':
@@ -175,23 +173,11 @@ def cross_boundary_correctness(
     all_scores = {}
     
     x_emb = adata.obsm[x_emb] #adata.layers['spliced']#x_emb]
-    # #######用scvelo进行速度降维后
+
     if x_emb == "X_umap":
         v_emb = adata.obsm['{}_umap'.format(velocity_key)]
     else:
         v_emb = adata.obsm[[key for key in adata.obsm if key.startswith(velocity_key)][0]]
-    ########用pca对layer里面的速度进行降维，此效果最好
-    # v_emb = adata.layers[velocity_key]
-
-    # from sklearn.decomposition import PCA
-
-    # # 创建 PCA 对象，指定目标维度
-    # pca = PCA(n_components=20)
-
-    # # 拟合并转换 v_emb
-    # v_emb = pca.fit_transform(v_emb)
-    # x_emb = pca.fit_transform(x_emb)
-
 
     for u, v in cluster_edges:
         #以第一个循环为例
@@ -224,7 +210,7 @@ def cross_boundary_correctness(
         return all_scores #返回分化方向+此方向所有值
     
     return scores, np.mean([sc for sc in scores.values()])#返回 分化方向+此分化方向的均值+所有均值
-    #########修改后的：
+    #########返回df：
 def cross_boundary_correctness2(
     adata, 
     cluster_key, 
@@ -307,7 +293,7 @@ def cross_boundary_correctness2(
         return df
     
     return scores, np.mean([sc for sc in scores.values()])
-#ICCo
+#ICCoh
 def inner_cluster_coh(adata, cluster_key, velocity_key, return_raw=False, layer=True):
     """In-cluster Coherence Score.
     Adapated from UniTVelo (Gao et al 2022).
@@ -359,7 +345,7 @@ from scipy.stats import pearsonr, spearmanr
 
 def inner_cluster_coh2(adata, cluster_key, velocity_key, layer=True, min_cells=5, metric='pearson', lambda_=1):
     """In-cluster Coherence Score (Improved).
-    
+    新改的
     Args:
         adata (Anndata): Anndata object.
         cluster_key (str): Key to the cluster column in adata.obs DataFrame.
@@ -393,19 +379,14 @@ def inner_cluster_coh2(adata, cluster_key, velocity_key, layer=True, min_cells=5
             else:
                 raise ValueError(f"Unsupported metric: {metric}")
             
-            np.fill_diagonal(similarities, 0)  # 将对角线元素设为0,排除自身相似性
-            
-            # 计算每个细胞与其他细胞相似性的平均值和标准差
+            np.fill_diagonal(similarities, 0) 
             mu = np.mean(similarities, axis=1)
             sigma = np.std(similarities, axis=1)
-            
-            # 计算幅度差异惩罚项
+
             amplitudes = np.linalg.norm(cat_vels, axis=1)
             amplitude_diff = np.abs(amplitudes[:, np.newaxis] - amplitudes)
-            np.fill_diagonal(amplitude_diff, 0)  # 将对角线元素设为0,排除自身差异
+            np.fill_diagonal(amplitude_diff, 0) 
             penalty = np.exp(-np.mean(amplitude_diff, axis=1))
-            
-            # 计算每个细胞的一致性得分
             cell_scores = penalty * (mu - lambda_ * sigma)
             
             scores[cat] = np.mean(cell_scores)
