@@ -14,7 +14,6 @@ from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 import warnings
 warnings.filterwarnings('ignore')
 
-# 确保所有sparse矩阵操作使用CSR格式
 import scipy.sparse as sp
 def unique_index(x):
     """
@@ -89,9 +88,6 @@ def standard_clean_recipe(adata, spliced_key = 'spliced', unspliced_key = 'unspl
                           normalize_library=True, n_top_genes = 2000, n_neighbors=30, smooth = True, umap=False, log=True, r2_adjust=True, share_normalization=False, center=False, celltype_key=None,
                           bknn=False, retain_genes = None):
 
-    """
-    Clean and setup data for gtvelo，解决稀疏矩阵，清洗，生成掩码等等
-    """
     if normalize_library:
         spliced_library_sizes = adata.layers[spliced_key].sum(1)#计算总和
         unspliced_library_sizes = adata.layers[unspliced_key].sum(1)
