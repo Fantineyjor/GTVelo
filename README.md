@@ -13,14 +13,18 @@ pip install -r requirements.txt
 https://doi.org/10.5281/zenodo.15251792
 
 # Using 
-Detailed implementation steps in notebooks.For step-by-step instructions and examples, please refer to the provided  files..ipynb(---)
+Detailed information on parameter settings, model usage process, etc. can be found in the notebooks.
 
 ```
 notebook/
 ├── fig2/
-│   ├── data/             
-│   │   ├── raw/          # Original experimental data
-│   │   └── processed/    # Preprocessed adata and latent_adata objects
 ├── fig3/
-│   └── ...              # Similar structure for other figures
+│── fig4/
+└── fig5/
+```
+
+```
+data/             
+├── raw/          # Original experimental data
+└── processed/    # Preprocessed adata and latent_adata objects
 ```
