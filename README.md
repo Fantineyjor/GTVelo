@@ -32,8 +32,10 @@ Obtain the single-cell RNA sequencing datasets from the Zenodo database for RNA 
 
 Use the gtvelo package to initialize a VAE model with models.vae_model, train it with train_vae.py, and then infer RNA velocity with output_results for downstream trajectory analysis.
 
+Notebooks contains more detailed steps and code for each experiment
 ```
 notebook/
+├── fig1/
 ├── fig2/
 ├── fig3/
 │── fig4/
